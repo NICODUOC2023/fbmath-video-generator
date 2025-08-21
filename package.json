@@ -6,21 +6,33 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
+    "@fontsource/roboto": "^5.2.6",
     "@remotion/cli": "4.0.339",
+    "elevenlabs-js": "^1.2.6",
+    "katex": "^0.16.22",
+    "lottie-react": "^2.4.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "react-katex": "^3.1.0",
     "remotion": "4.0.339",
-    "zod": "3.22.3"
+    "zod": "^3.22.3"
   },
   "devDependencies": {
     "@remotion/eslint-config-flat": "4.0.339",
+    "eslint": "9.19.0",
     "prettier": "3.6.0",
-    "eslint": "9.19.0"
+    "tsx": "^4.20.4"
   },
   "scripts": {
     "dev": "remotion studio",
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "start": "remotion preview",
+    "render:one": "remotion render ReelTest out/test.mp4",
+    "render:all": "node scripts/render-all.mjs",
+    "generate:audio": "node scripts/generate-audio.mjs",
+    "generate:effects": "node scripts/generate-audio.mjs --effects",
+    "generate:all": "npm run generate:audio && npm run generate:effects"
   }
 }

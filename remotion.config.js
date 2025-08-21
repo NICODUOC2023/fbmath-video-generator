@@ -6,3 +6,6 @@
 import { Config } from "@remotion/cli/config";
 
 Config.setVideoImageFormat("jpeg");
+
+// Configure public folder for static assets
+Config.setPublicDir("./public");
