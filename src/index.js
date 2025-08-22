@@ -2,7 +2,7 @@
 // npx remotion render <entry-file> HelloWorld out/video.mp4
 
 import { registerRoot } from "remotion";
-import { RemotionRoot } from "./Root";
+import { RemotionRoot } from "./Root.jsx";
 import '@fontsource/roboto';
 
 registerRoot(RemotionRoot);

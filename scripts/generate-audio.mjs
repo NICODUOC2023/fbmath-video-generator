@@ -1,5 +1,9 @@
 // scripts/generate-audio.mjs
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { config } from 'dotenv';
+
+// Cargar variables de entorno
+config();
 
 // Configuración
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || 'sk_22f73d5ca3e38bbf31fd63675cc1ca2680d45755f09f60ef';
@@ -28,6 +32,7 @@ async function generateAudioWithElevenLabs(text, voiceId = VOICE_ID) {
         stability: 0.75,
         similarity_boost: 0.75,
         style: 0.1,
+        speed: 1.2,
         use_speaker_boost: true
       }
     })
@@ -42,47 +47,154 @@ async function generateAudioWithElevenLabs(text, voiceId = VOICE_ID) {
 
 async function generateAudio() {
   try {
-    // Leer datos de preguntas
-    const data = JSON.parse(readFileSync('data/questions.jsx', 'utf8'));
+    // Leer datos de preguntas desde my-questions.js
+    const { myQuestions } = await import('../data/my-questions.js');
     
     console.log('🎵 Generando audios con ElevenLabs...\n');
+    console.log(`📊 Total de preguntas encontradas: ${myQuestions.length}\n`);
     
-    for (const item of data) {
-      const audioFileName = `question_${String(item.id).padStart(3, '0')}.mp3`;
-      const audioPath = `public/audio/${audioFileName}`;
+    // Generar audios para todas las preguntas
+    for (let i = 0; i < myQuestions.length; i++) {
+      const item = myQuestions[i];
+      console.log(`\n🎯 Procesando pregunta ${i + 1}: "${item.question}"`);
       
-      // Skip si ya existe
-      if (existsSync(audioPath)) {
-        console.log(`⏭️  ${audioFileName} ya existe, saltando...`);
-        continue;
-      }
+      // Audio de la pregunta
+      await generateQuestionAudio(item, i);
       
-      console.log(`🎙️  Generando: ${audioFileName}`);
-      console.log(`📝 Texto: "${item.q}"`);
-      
-      try {
-        // Generar audio usando directamente el texto de la pregunta
-        const audio = await generateAudioWithElevenLabs(item.q, item.voiceId || VOICE_ID);
-        
-        // Guardar archivo
-        writeFileSync(audioPath, Buffer.from(audio));
-        console.log(`✅ Guardado: ${audioPath}\n`);
-        
-        // Actualizar JSON con ruta del audio
-        item.audioFile = `/audio/${audioFileName}`;
-        
-      } catch (error) {
-        console.error(`❌ Error generando audio para pregunta ${item.id}:`, error.message);
-      }
+      // Audio de la respuesta correcta
+      await generateAnswerAudio(item, i);
     }
     
-    // Guardar JSON actualizado
-    writeFileSync('data/questions.jsx', JSON.stringify(data, null, 2));
-    console.log('✅ Audio generation completo!');
+    console.log('\n🎉 ¡Todos los audios generados exitosamente!');
     
   } catch (error) {
     console.error('❌ Error:', error.message);
     process.exit(1);
+  }
+}
+
+async function generateQuestionAudio(item, questionIndex) {
+  const audioFileName = `question_${item.id}_elevenlabs.mp3`;
+  const audioPath = `public/audio/${audioFileName}`;
+  
+  // Skip si ya existe
+  if (existsSync(audioPath)) {
+    console.log(`⏭️  ${audioFileName} ya existe, saltando...`);
+    return;
+  }
+
+  // Frases introductorias normales
+  const introductoryPhrases = {
+    'math': [
+      'Ejercita tu mente.',
+      'Test de inteligencia!',
+      'Veamos qué tan inteligente eres.',
+      '¿Cuántas preguntas puedes responder?'
+    ],
+    'science': [
+      'Probemos tus conocimientos científicos.',
+      'Veamos si sabes de ciencias.',
+      'Es momento de hablar de ciencia.',
+      'Pongamos a prueba tu cultura científica.'
+    ],
+    'history': [
+      'Viajemos en el tiempo con esta pregunta.',
+      'Pongamos a prueba tu conocimiento histórico.',
+      'Veamos si conoces este dato histórico.',
+      'Es momento de recordar la historia.'
+    ],
+    'geography': [
+      'Exploremos el mundo con esta pregunta.',
+      'Pongamos a prueba tu geografía.',
+      'Veamos si conoces el mundo.',
+      'Es hora de hablar de geografía.'
+    ],
+    'language': [
+      'Probemos tu dominio del lenguaje.',
+      'Veamos tus conocimientos lingüísticos.',
+      'Es momento de hablar de literatura.',
+      'Pongamos a prueba tu vocabulario.'
+    ]
+  };
+
+  // Frases especiales cada 2 preguntas (empezando desde la pregunta 2, índice 1)
+  const specialPhrases = [
+    'Dime',
+    'Y',
+    'Sabes'
+  ];
+
+  let fullText = '';
+
+  // Cada 2 preguntas usar frases especiales
+  if ((questionIndex + 1) % 2 === 0) {
+    // Usar frase especial
+    const randomSpecialPhrase = specialPhrases[Math.floor(Math.random() * specialPhrases.length)];
+    fullText = `${randomSpecialPhrase} ${item.question}`;
+    console.log(`🎭 Usando frase especial: "${randomSpecialPhrase}"`);
+  } else {
+    // Usar frase introductoria normal
+    let theme = 'math'; // Por defecto
+    if (item.id.includes('science')) theme = 'science';
+    else if (item.id.includes('history')) theme = 'history';
+    else if (item.id.includes('geography')) theme = 'geography';
+    else if (item.id.includes('language')) theme = 'language';
+    
+    const phrases = introductoryPhrases[theme];
+    const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+    fullText = `${randomPhrase} ${item.question}`;
+    console.log(`📝 Usando frase normal: "${randomPhrase}"`);
+  }
+  
+  console.log(`�️  Generando: ${audioFileName}`);
+  console.log(`📝 Texto completo: "${fullText}"`);
+  
+  try {
+    const audio = await generateAudioWithElevenLabs(fullText, VOICE_ID);
+    writeFileSync(audioPath, Buffer.from(audio));
+    console.log(`✅ Guardado: ${audioPath}`);
+    
+  } catch (error) {
+    console.error(`❌ Error generando audio para pregunta ${item.id}:`, error.message);
+  }
+}
+
+async function generateAnswerAudio(item) {
+  const audioFileName = `answer_${item.id}_elevenlabs.mp3`;
+  const audioPath = `public/audio/${audioFileName}`;
+  
+  // Skip si ya existe
+  if (existsSync(audioPath)) {
+    console.log(`⏭️  ${audioFileName} ya existe, saltando...`);
+    return;
+  }
+
+  // Encontrar la respuesta correcta
+  const correctAnswer = item.options.find(option => option.isCorrect);
+  if (!correctAnswer) {
+    console.error(`❌ No se encontró respuesta correcta para pregunta ${item.id}`);
+    return;
+  }
+
+  // Frases para respuestas correctas
+  const answerPhrases = [
+    `Tienes razón, es ${correctAnswer.text}`,
+    `Correcto! Es ${correctAnswer.text}`,
+    `Acertaste, era ${correctAnswer.text}`
+  ];
+
+  const randomAnswerPhrase = answerPhrases[Math.floor(Math.random() * answerPhrases.length)];
+  
+  console.log(`🎯 Generando respuesta: ${audioFileName}`);
+  console.log(`✅ Respuesta: "${randomAnswerPhrase}"`);
+  
+  try {
+    const audio = await generateAudioWithElevenLabs(randomAnswerPhrase, VOICE_ID);
+    writeFileSync(audioPath, Buffer.from(audio));
+    console.log(`✅ Guardado: ${audioPath}`);
+    
+  } catch (error) {
+    console.error(`❌ Error generando audio de respuesta para ${item.id}:`, error.message);
   }
 }
 

@@ -1,7 +1,7 @@
 [
   {
     "id": 1,
-    "q": "¿Cuánto es la mitad de 5?",
+    "q": "¿CUÁNTO ES LA MITAD DE 5?",
     "options": [
       {
         "id": "A",
